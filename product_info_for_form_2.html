@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
@@ -18,9 +18,10 @@
     --halo-bright: 1.2;        /* 亮度係數（filter:brightness） */
     --halo-sat: 2;             /* 飽和度係數（filter:saturate） */
     --halo-op: .9;             /* 霓虹不透明度 */
+    --gutterX: clamp(12px, 4vw, 40px);   /* 左右保留空隙（隨視窗寬度自適應） */
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:#05080c;display:flex;justify-content:center;align-items:flex-start;padding-top:0;padding-bottom:0}
+  html,body{min-height:100svh;margin:0;background:#05080c;display:flex;justify-content:center;align-items:flex-start;padding-top:0;padding-bottom:0}
 
   /* 1080×1350 畫布自動縮放 */
   .stage{position:relative; width:calc(var(--w)*1px); height:calc(var(--h)*1px);
@@ -259,16 +260,24 @@
 
   // 讓整個 1080×1350 畫布自動縮放以符合視窗
   function fitCanvas(){
-    const w = 1080, h = 1350;
-    const marginV = 10;
-    const availW  = window.innerWidth;
-    const availH  = Math.max(0, window.innerHeight - marginV*2);
+    const rootCS = getComputedStyle(document.documentElement);
+    const w = parseFloat(rootCS.getPropertyValue('--w')) || 1080;
+    const h = parseFloat(rootCS.getPropertyValue('--h')) || 1350;
+    const gutterX = parseFloat(rootCS.getPropertyValue('--gutterX')) || 16;
+    const marginV = 10; // 上下皆預留 10px
+    const vv = window.visualViewport;
+    const rawW = vv ? vv.width : window.innerWidth;
+    const rawH = vv ? vv.height : window.innerHeight;
+    const availW = Math.max(0, rawW - gutterX*2);
+    const availH = Math.max(0, rawH - marginV*2);
     const s = Math.min(availW / w, availH / h);
     const stage = document.querySelector('.stage');
     if (!stage) return;
     stage.style.setProperty('--s', s);
     stage.style.marginTop = marginV + 'px';
     stage.style.marginBottom = marginV + 'px';
+    stage.style.marginLeft  = gutterX + 'px';
+    stage.style.marginRight = gutterX + 'px';
     layoutBlocks();
     scaleTitle();
     avoidOverlap();
@@ -321,6 +330,11 @@
   }
 
   addEventListener('resize', fitCanvas);
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', fitCanvas);
+    visualViewport.addEventListener('scroll', fitCanvas);
+  }
+  addEventListener('orientationchange', fitCanvas);
   addEventListener('load', () => {
     fitCanvas();
     if (document.fonts) {
